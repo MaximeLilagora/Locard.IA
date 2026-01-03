@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS file (
     ------------------------------------------------------------------
     -- Scores / poids par fichier (pour agrégation dossier)
     ------------------------------------------------------------------
+
     rgpd_score_file      REAL,         -- [0,1] risque RGPD estimé
     business_criticality REAL,         -- [0,1] customer rules defined prior to analysis
     legal_risk_weight    REAL,         -- [0,1] analysis of potential legal contracting 

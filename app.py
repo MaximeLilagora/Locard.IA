@@ -7,6 +7,7 @@ from pathlib import Path
 from working_DB.initial_scan import scan_folder_and_store
 from metadata.Magic_Scan import run_magic_numbers_on_db
 from forensic.crude_benefits import analyze_duplicates
+from forensic.Benford_distrib import analyze_benford_distribution
 
 
 if 'selected_tool' not in st.session_state:
@@ -54,7 +55,7 @@ if st.sidebar.button("Initialize database"):
 if st.sidebar.button("🔍 Scan sweep"):
     target = st.session_state.get('dossier_cible')
     if target and Path(target).exists():
-        scan_folder_and_store(target)
+        scan_folder_and_store(target, str(DB_PATH))
         st.success("Scan terminé et base mise à jour.")
     else:
         st.error("❌ Aucun dossier valide sélectionné pour le scan.")
@@ -64,6 +65,9 @@ if st.sidebar.button("🎯 Magic numbers check"):
 
 if st.sidebar.button("💰 Crude benefits"):
     st.session_state['selected_tool'] = "Crude benefits"
+
+if st.sidebar.button("📉 Benford NNRA"):
+    st.session_state['selected_tool'] = "Benford NNRA"
 
 if st.sidebar.button("📋 Populate metadata"):
     st.session_state['selected_tool'] = "Populate metadata"
@@ -111,10 +115,6 @@ if selected_tool == "Magic numbers check":
         "et remplit la colonne `true_extension` à partir des magic numbers."
     )
 
-    # Afficher le chemin de la base pour info
-    ROOT_DIR = Path(__file__).resolve().parent
-    DB_PATH = ROOT_DIR / "working_DB" / "project_index.db"
-
     st.code(f"Base utilisée : {DB_PATH}", language="bash")
 
     if st.button("Lancer le scan Magic Numbers"):
@@ -144,7 +144,6 @@ if selected_tool == "Magic numbers check":
                     log_area.text("\n".join(logs[-20:]))
 
             # Si les chemins stockés dans la colonne `path` sont ABSOLUS, laisse base_dir=None
-            # Si ce sont des chemins relatifs, mets ici le dossier racine correspondant.
             run_magic_numbers_on_db(
                 db_path=str(DB_PATH),
                 base_dir=None,          # ou str(st.session_state['dossier_cible']) si chemins relatifs
@@ -203,3 +202,48 @@ if selected_tool == "Crude benefits":
 
             except Exception as e:
                 st.error(f"Erreur lors de l'analyse : {e}")
+
+# -------------------------------
+# --- BENFORD ANALYSIS UI ---
+# -------------------------------
+
+if selected_tool == "Benford NNRA":
+    st.header("📉 Benford Natural Number Analysis")
+    st.write(
+        "Cette analyse vérifie si la distribution des tailles de fichiers suit la loi de Benford (sur les 2 premiers chiffres). "
+        "Une déviation significative peut indiquer des données générées artificiellement, chiffrées ou altérées."
+    )
+    
+    st.code(f"Base utilisée : {DB_PATH}", language="bash")
+
+    if st.button("Lancer l'analyse Benford"):
+        if not DB_PATH.exists():
+            st.error(f"❌ Base SQLite introuvable : {DB_PATH}")
+        else:
+            with st.spinner("Calcul des distributions en cours..."):
+                res = analyze_benford_distribution(str(DB_PATH))
+            
+            if res["success"]:
+                st.success("Analyse terminée.")
+                
+                # 1. Metrics
+                col1, col2 = st.columns(2)
+                col1.metric("Fichiers analysés", res["file_count"])
+                col1.metric("Score Chi-Carré", f"{res['chi_square']:.2f}")
+                
+                # Interprétation visuelle
+                if "✅" in res["interpretation"]:
+                    col2.success(res["interpretation"])
+                elif "⚠️" in res["interpretation"]:
+                    col2.warning(res["interpretation"])
+                else:
+                    col2.error(res["interpretation"])
+                
+                # 2. Graphique
+                st.pyplot(res["fig"])
+                
+                # 3. Data Expander
+                with st.expander("Voir les données brutes"):
+                    st.dataframe(res["dataframe"])
+            else:
+                st.error(f"Erreur : {res['error']}")
