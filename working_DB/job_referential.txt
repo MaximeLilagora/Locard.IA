@@ -1,0 +1,38 @@
+1 · Gouvernance & Juridique
+	1	11 Gouvernance & Instances (CA, direction, comités, PV, stratégie, rapports officiels)
+	2	12 Contrats & Conventions juridiques (contrats clients, fournisseurs, partenaires, baux, accords cadres)
+	3	13 Contentieux & Précontentieux (litiges, mises en demeure, dossiers avocats, réclamations formelles)
+	4	14 Assurances & Gestion des risques (polices, attestations, sinistres, déclarations, correspondances assureurs)
+	5	15 Politiques, Procédures & Conformité (politiques internes, RGPD, chartes IT, codes de conduite, procédures écrites)
+
+2 · Finance & Comptabilité
+	6	21 Factures & Avoirs (clients et/ou fournisseurs, selon le niveau de détail que tu choisiras ensuite)
+	7	22 Devis, Offres & Bons de commande (devis signés ou non, BC, propositions commerciales chiffrées)
+	8	23 Comptabilité générale & Fiscalité (journaux, grands livres, balances, liasses fiscales, TVA, IS)
+	9	24 Trésorerie, Banque & Moyens de paiement (relevés bancaires, rapprochements, RIB, mandats, cartes)
+	10	25 Achats & Contrats fournisseurs (contrats cadres, conditions générales fournisseurs, dossiers d’achats structurés)
+
+3 · Ressources Humaines
+	11	31 Dossiers salariés (contrats de travail, avenants, pièces d’identité, sanctions, échanges sensibles)
+	12	32 Paie & Déclarations sociales (bulletins de paie, DSN, charges sociales, états de paie, historiques)
+	13	33 Recrutement & Candidatures (CV, lettres de motivation, comptes rendus d’entretien, tests)
+	14	34 Temps de travail, Plannings & Formation (plannings, suivi des heures, congés, formations, entretiens pro / annuels)
+
+4 · Projets / Chantiers
+	15	41 Dossiers Projets & Chantiers (dossier global par projet/chantier, structure “maître”)
+	16	42 Appels d’offres & Marchés (publics / privés) (DCE, réponses, critères, notifications, marchés signés)
+	17	43 Plans, Maquettes & Documents techniques (plans DWG/PDF, maquettes, schémas, DOE techniques)
+	18	44 Suivi de chantier & Exploitation (comptes rendus de réunion, journaux de chantier, réceptions, levées de réserves)
+
+5 · QHSE
+51 Qualité, Certifications & Audits (ISO, procédures qualité, rapports d’audit, plans d’actions)
+	19	52 Hygiène, Sécurité & Environnement (HSE) (DUER, registre sécurité, déclarations d’incident, suivi EPI, déchets, environnement)
+
+6 · Com / Commercial / Administratif
+	21	61 Communication & Marketing (plaquettes, présentations, contenus web, réseaux sociaux, com interne)
+	22	62 Relation client, CRM & Contrats commerciaux (dossiers clients, CRM export, contrats commerciaux, conditions particulières)
+	23	63 Administration générale & Services généraux (baux de locaux, flotte auto, fournitures, contrats de maintenance, prestataires généraux)
+
+7 · SI & Transversal
+	24	71 SI, Outils & Projets transverses (docs IT, schémas d’archi, docs outils métiers, projets internes non métier-pur)
+	25	72 Archives & Inclassés Métiers (anciens dossiers, zips, sauvegardes bureautiques, vrac à trier, “quarantaine” pour ce qui n’est pas bien classé)
