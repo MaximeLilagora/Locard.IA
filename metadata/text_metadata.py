@@ -163,7 +163,7 @@ def populate_text_metadata(conn: sqlite3.Connection, file_id: int) -> None:
         """
         UPDATE file
         SET mime_detected = ?,
-            updated_at    = datetime('now')
+            last_update   = datetime('now')  -- <--- REMPLACER 'updated_at' PAR 'last_update'
         WHERE id = ?
         """,
         (meta["mime_detected"], file_id),

@@ -2,6 +2,7 @@
 import sqlite3
 from pathlib import Path
 
+# Chemin absolu a modifier
 DB_PATH = "/Users/maxime/DEV/CommandoAI/working_DB/project_index.db"
 
 SCHEMA_SQL = """
@@ -12,14 +13,12 @@ SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS folder (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     path            TEXT NOT NULL UNIQUE,          -- chemin absolu / logique
-    parent_id       INTEGER,
+    parent_id       INTEGER REFERENCES folder(id) ON DELETE CASCADE,
     files_subcount  INTEGER,
     files_totcount  INTEGER,
     personnal_fold  INTEGER,
     shared_fold     INTEGER,
-    app_fold        INTEGER,
-
-                REFERENCES folder(id) ON DELETE CASCADE
+    app_fold        INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_folder_parent_id ON folder(parent_id);
@@ -52,6 +51,7 @@ CREATE TABLE IF NOT EXISTS file (
 
     -- Suivi interne
     ent_created_at  TEXT DEFAULT (datetime('now')),
+    updated_at      TEXT,
     last_update     TEXT,
 
     -- Sémantique métier (héritée de ton schéma)
@@ -85,13 +85,13 @@ CREATE TABLE IF NOT EXISTS file (
 );
 
 CREATE INDEX IF NOT EXISTS idx_file_folder_id      ON file(folder_id);
-CREATE INDEX IF NOT EXISTS idx_file_family         ON file(family);
+CREATE INDEX IF NOT EXISTS idx_file_ext_family     ON file(ext_family);
 CREATE INDEX IF NOT EXISTS idx_file_decl_extension ON file(decl_extension);
 CREATE INDEX IF NOT EXISTS idx_file_true_extension ON file(true_extension);
 CREATE INDEX IF NOT EXISTS idx_file_doc_family     ON file(doc_family);
 
 ----------------------------------------------------------------------
--- 1. Images
+-- 2. Images
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_image_metadata (
@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS file_image_metadata (
 );
 
 ----------------------------------------------------------------------
--- 2. Audio
+-- 3. Audio
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_audio_metadata (
@@ -182,7 +182,7 @@ CREATE TABLE IF NOT EXISTS file_audio_metadata (
 );
 
 ----------------------------------------------------------------------
--- 3. Videos
+-- 4. Videos
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_video_metadata (
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS file_video_metadata (
 );
 
 ----------------------------------------------------------------------
--- 4. Office (Word/Excel/PPT/ODF)
+-- 5. Office (Word/Excel/PPT/ODF)
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_office_metadata (
@@ -279,7 +279,7 @@ CREATE TABLE IF NOT EXISTS file_office_metadata (
 );
 
 ----------------------------------------------------------------------
--- 5. PDF
+-- 6. PDF
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_pdf_metadata (
@@ -321,7 +321,7 @@ CREATE TABLE IF NOT EXISTS file_pdf_metadata (
 );
 
 ----------------------------------------------------------------------
--- 6. Texte
+-- 7. Texte
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_text_metadata (
@@ -334,6 +334,7 @@ CREATE TABLE IF NOT EXISTS file_text_metadata (
 
     -- Statistics
     line_count          INTEGER,
+    word_count          INTEGER,
     char_count          INTEGER,
     avg_line_length     REAL,
 
@@ -362,7 +363,7 @@ CREATE TABLE IF NOT EXISTS file_text_metadata (
 );
 
 ----------------------------------------------------------------------
--- 7. Archives
+-- 8. Archives
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_archive_metadata (
@@ -372,15 +373,21 @@ CREATE TABLE IF NOT EXISTS file_archive_metadata (
     -- File type and size
     archive_format          TEXT,       -- 'zip', 'rar', ...
     compressed_size         INTEGER,
-    uncompressed_size       INTEGER,
+    total_uncompressed_size INTEGER,
     compression_ratio       REAL,
 
     -- Datas inside
     file_count              INTEGER,
     dir_count               INTEGER,
+    folder_count            INTEGER,
     largest_file_size       INTEGER,
     has_executables         INTEGER,    -- 0/1
 
+    -- Semantic Analysis
+    Exerpt_hund             TEXT,
+    Exerpt_thou             TEXT,
+    Exerpt_full             TEXT,
+    
     -- Security and structures
     is_encrypted            INTEGER,    -- 0/1
     is_password_protected   INTEGER,    -- 0/1
@@ -395,7 +402,7 @@ CREATE TABLE IF NOT EXISTS file_archive_metadata (
 );
 
 ----------------------------------------------------------------------
--- 8. Images disque
+-- 9. Images disque
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_disk_image_metadata (
@@ -419,7 +426,7 @@ CREATE TABLE IF NOT EXISTS file_disk_image_metadata (
 );
 
 ----------------------------------------------------------------------
--- 9. EXE
+-- 10. EXE
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_executable_metadata (
@@ -453,7 +460,7 @@ CREATE TABLE IF NOT EXISTS file_executable_metadata (
 );
 
 ----------------------------------------------------------------------
--- 10. Source code
+-- 11. Source code
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_code_metadata (
@@ -464,11 +471,13 @@ CREATE TABLE IF NOT EXISTS file_code_metadata (
     language                TEXT,   -- 'python', 'java', ...
     encoding                TEXT,
 
-    -- Statistics
+  -- Statistics
     line_count              INTEGER,
-    comment_line_count      INTEGER,
+    lines_code              INTEGER,
+    lines_comment           INTEGER,  -- Renommé pour correspondre au script python
     comment_ratio           REAL,
-    blank_line_count        INTEGER,
+    lines_total             INTEGER,
+    lines_empty             INTEGER,  -- Renommé pour correspondre au script python
 
     -- Structure
     function_count          INTEGER,
@@ -486,12 +495,17 @@ CREATE TABLE IF NOT EXISTS file_code_metadata (
     indent_style            TEXT,   -- 'spaces', 'tabs'
     indent_size             INTEGER,
 
-    -- Security
-    has_secrets             INTEGER    -- 0/1
+   -- Security
+    has_secrets             INTEGER,    -- 0/1
+
+    -- Semantic Analysis
+    Exerpt_hund             TEXT,
+    Exerpt_thou             TEXT,
+    Exerpt_full             TEXT
 );
 
 ----------------------------------------------------------------------
--- 11. Data Bases
+-- 12. Data Bases
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_database_metadata (
@@ -520,7 +534,7 @@ CREATE TABLE IF NOT EXISTS file_database_metadata (
 );
 
 ----------------------------------------------------------------------
--- 12. Tabular datas (CSV, XLS...)
+-- 13. Tabular datas (CSV, XLS...)
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_data_metadata (
@@ -555,7 +569,7 @@ CREATE TABLE IF NOT EXISTS file_data_metadata (
 );
 
 ----------------------------------------------------------------------
--- 13. 3D / CAO / SIG
+-- 14. 3D / CAO / SIG
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_3d_metadata (
@@ -598,7 +612,7 @@ CREATE TABLE IF NOT EXISTS file_3d_metadata (
 );
 
 ----------------------------------------------------------------------
--- 14. Fonts
+-- 15. Fonts
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_font_metadata (
@@ -638,7 +652,7 @@ CREATE TABLE IF NOT EXISTS file_font_metadata (
 );
 
 ----------------------------------------------------------------------
--- 15. Projects (Cut, audio, graphics...)
+-- 16. Projects (Cut, audio, graphics...)
 ----------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS file_project_metadata (

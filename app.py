@@ -8,7 +8,7 @@ from working_DB.initial_scan import scan_folder_and_store
 from metadata.Magic_Scan import run_magic_numbers_on_db
 from forensic.crude_benefits import analyze_duplicates
 from forensic.Benford_distrib import analyze_benford_distribution
-
+from metadata.metadata_router import run_global_metadata_population
 
 if 'selected_tool' not in st.session_state:
     st.session_state['selected_tool'] = None
@@ -202,6 +202,49 @@ if selected_tool == "Crude benefits":
 
             except Exception as e:
                 st.error(f"Erreur lors de l'analyse : {e}")
+
+# -------------------------------
+# --- POPULATE METADATA UI ---
+# -------------------------------
+
+if selected_tool == "Populate metadata":
+    st.header("📋 Extraction des Métadonnées")
+    st.write(
+        "Ce module parcourt tous les fichiers indexés et extrait les métadonnées techniques "
+        "(EXIF, ID3, propriétés Office, stats Code, etc.) selon leur type identifié."
+    )
+
+    if st.button("Lancer l'extraction"):
+        if not DB_PATH.exists():
+            st.error("❌ Base de données introuvable. Veuillez lancer l'initialisation et le scan d'abord.")
+        else:
+            progress_bar = st.progress(0.0)
+            status_text = st.empty()
+            log_area = st.empty()
+            logs = []
+
+            def meta_callback(current, total, filename, status):
+                if total > 0:
+                    progress_bar.progress(current / total)
+                    status_text.text(f"Traitement {current}/{total} : {filename}")
+                
+                # On log seulement les succès/erreurs, pas les SKIPPED pour réduire le bruit
+                if "SUCCESS" in status:
+                    logs.append(f"✅ {filename} : {status}")
+                elif "ERROR" in status:
+                    logs.append(f"❌ {filename} : {status}")
+                
+                # Affiche les 15 dernières lignes
+                if logs:
+                    log_area.text("\n".join(logs[-15:]))
+
+            run_global_metadata_population(
+                db_path=str(DB_PATH),
+                progress_callback=meta_callback
+            )
+            
+            st.success("✅ Extraction des métadonnées terminée.")
+
 
 # -------------------------------
 # --- BENFORD ANALYSIS UI ---
