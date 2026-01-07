@@ -429,34 +429,26 @@ CREATE TABLE IF NOT EXISTS file_disk_image_metadata (
 -- 10. EXE
 ----------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS file_executable_metadata (
+CREATE TABLE IF NOT EXISTS file_exe_metadata (
     file_id             INTEGER PRIMARY KEY
                         REFERENCES file(id) ON DELETE CASCADE,
 
-    -- Technical and specs
-    platform            TEXT,       -- 'windows', 'linux', 'macos', 'script', ...
-    architecture        TEXT,       -- 'x86', 'x64', 'arm64', ...
-    binary_format       TEXT,       -- 'PE', 'ELF', 'Mach-O', 'script'
-
-    -- Primary characteristics
-    is_gui              INTEGER,    -- 0/1
-    is_console          INTEGER,    -- 0/1
+    -- Technical info extracted by pefile
+    architecture        TEXT,
+    compile_timestamp   TEXT,
+    entry_point         TEXT,
+    subsystem           TEXT,
     is_signed           INTEGER,    -- 0/1
-    signer_name         TEXT,
-    signature_valid     INTEGER,    -- 0/1/NULL
+    
+    -- Structure stats
+    section_count       INTEGER,
+    import_count        INTEGER,
+    export_count        INTEGER,
 
-    -- Build
-    compile_time        TEXT,       -- ISO8601 approx
-    min_os_version      TEXT,
-    dependency_count    INTEGER,
-    uses_packer         INTEGER,    -- 0/1
-    packer_name         TEXT,
-
-    -- Version info
-    product_name        TEXT,
-    product_version     TEXT,
-    company_name        TEXT,
-    file_description    TEXT
+    -- Semantic Analysis (Technical Summary)
+    Exerpt_hund         TEXT,
+    Exerpt_thou         TEXT,
+    Exerpt_full         TEXT
 );
 
 ----------------------------------------------------------------------

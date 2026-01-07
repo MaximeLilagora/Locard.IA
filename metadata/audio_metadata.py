@@ -3,17 +3,12 @@ import sqlite3
 from pathlib import Path
 from typing import Optional, Any, Dict
 
-# Tente d'importer mutagen, gestion gracieuse si absent
-try:
-    import mutagen
-    from mutagen.easyid3 import EasyID3
-    from mutagen.mp3 import MP3
-    from mutagen.flac import FLAC
-    from mutagen.oggvorbis import OggVorbis
-    from mutagen.mp4 import MP4
-    HAVE_MUTAGEN = True
-except ImportError:
-    HAVE_MUTAGEN = False
+import mutagen
+from mutagen.easyid3 import EasyID3
+from mutagen.mp3 import MP3
+from mutagen.flac import FLAC
+from mutagen.oggvorbis import OggVorbis
+from mutagen.mp4 import MP4
 
 # ----------------------------
 # --- HELPERS ---
