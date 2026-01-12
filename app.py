@@ -9,6 +9,8 @@ from metadata.Magic_Scan import run_magic_numbers_on_db
 from forensic.crude_benefits import analyze_duplicates
 from forensic.Benford_distrib import analyze_benford_distribution
 from metadata.metadata_router import run_global_metadata_population
+from analytics.volume_map import get_folder_volume_df
+
 
 if 'selected_tool' not in st.session_state:
     st.session_state['selected_tool'] = None
@@ -69,6 +71,9 @@ if st.sidebar.button("💰 Crude benefits"):
 if st.sidebar.button("📉 Benford NNRA"):
     st.session_state['selected_tool'] = "Benford NNRA"
 
+if st.sidebar.button("📊 Volume map"):
+    st.session_state['selected_tool'] = "Volume Map"
+    
 if st.sidebar.button("📋 Populate metadata"):
     st.session_state['selected_tool'] = "Populate metadata"
 
@@ -290,3 +295,27 @@ if selected_tool == "Benford NNRA":
                     st.dataframe(res["dataframe"])
             else:
                 st.error(f"Erreur : {res['error']}")
+
+# VOLUMETRIC MAP
+
+if selected_tool == "Volume Map":
+    st.header("📊 Cartographie volumétrique")
+
+    if st.button("Calculer la cartographie"):
+        df = get_folder_volume_df(str(DB_PATH))
+
+        st.write("Top 30 dossiers par volume :")
+        df_top = df.sort_values("total_size_bytes", ascending=False).head(30)
+        df_top_display = df_top.assign(
+            total_size_gb = df_top["total_size_bytes"] / (1024**3)
+        )
+        st.dataframe(df_top_display[["folder_path", "file_count", "total_size_gb"]])
+
+        # Export CSV
+        csv_bytes = df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📥 Télécharger le CSV complet",
+            data=csv_bytes,
+            file_name="volume_map.csv",
+            mime="text/csv",
+        )
