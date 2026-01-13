@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import sqlite3
 from pathlib import Path
+from src.config import DB_PATH 
 
 # Chemin absolu a modifier
-DB_PATH = "/Users/maxime/DEV/CommandoAI/working_DB/project_index.db"
+BASE_DIR = Path(__file__).resolve().parent.parent   # monte deux niveaux : on arrive à la racine du projet
+DB_PATH = BASE_DIR / "working_DB" / "project_index.db"
 
 SCHEMA_SQL = """
 ----------------------------------------------------------------------
@@ -681,8 +683,42 @@ CREATE TABLE IF NOT EXISTS file_project_metadata (
     autosave_enabled       INTEGER,    -- 0/1
     backup_file_count      INTEGER
 );
-"""
 
+
+#----------------------------------------------------------------------
+#-- 17. DÉTECTION DE DONNÉES SENSIBLES (regex forensic)
+#----------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS file_sensitivity_detection (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- Référence au fichier
+    file_id         INTEGER NOT NULL,
+                    REFERENCES file(id) ON DELETE CASCADE,
+
+    -- Type de donnée détectée
+    category        TEXT NOT NULL,  -- ex: "Mot de passe", "NSS", "Email", etc.
+
+    -- Valeur trouvée
+    value           TEXT NOT NULL,
+
+    -- Position (optionnel)
+    line_number     INTEGER,      -- ligne dans le texte
+    char_offset     INTEGER,      -- position en caractères
+
+    -- Date
+    detected_at     TEXT DEFAULT (datetime('now')),
+
+    -- Index pour accélérer les recherches
+    UNIQUE(file_id, category, value)
+);
+
+-- Index
+CREATE INDEX IF NOT EXISTS idx_detection_file_id ON file_sensitivity_detection(file_id);
+CREATE INDEX IF NOT EXISTS idx_detection_category ON file_sensitivity_detection(category);
+CREATE INDEX IF NOT EXISTS idx_detection_value ON file_sensitivity_detection(value);
+
+"""
 
 def init_db(db_path: str = DB_PATH) -> None:
     """Create the SQL Tables if they don't exist."""

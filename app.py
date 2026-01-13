@@ -2,6 +2,9 @@ import subprocess
 import json
 import os
 import streamlit as st
+import pandas as pd
+import re
+import sqlite3
 
 from pathlib import Path
 from working_DB.initial_scan import scan_folder_and_store
@@ -10,7 +13,9 @@ from forensic.crude_benefits import analyze_duplicates
 from forensic.Benford_distrib import analyze_benford_distribution
 from metadata.metadata_router import run_global_metadata_population
 from analytics.volume_map import get_folder_volume_df
-
+from forensic.anomalies import run_forensic_analysis
+from src.config import DB_PATH          # <-- import du chemin calculé dynamiquement
+from src.forensic_detector import run_forensic_scan
 
 if 'selected_tool' not in st.session_state:
     st.session_state['selected_tool'] = None
@@ -18,8 +23,6 @@ if 'selected_tool' not in st.session_state:
 st.title("Locard.IA AMC 0.2")
 st.sidebar.title("🛠️ Tools")
 
-ROOT_DIR = Path(__file__).resolve().parent
-DB_PATH = ROOT_DIR / "working_DB" / "project_index.db"
 
 # ---------------------------
 # --- FOLDER TO WORK WITH ---
@@ -79,6 +82,9 @@ if st.sidebar.button("📋 Populate metadata"):
 
 if st.sidebar.button("🏷️ File labelling"):
     st.session_state['selected_tool'] = "File labelling"
+
+if st.sidebar.button("🔍 Regex Analytics"):
+    st.session_state['selected_tool'] = "Regex Analytics"
 
 if st.sidebar.button("📊 Estimate work"):
     st.session_state['selected_tool'] = "Estimate work"
@@ -209,6 +215,97 @@ if selected_tool == "Crude benefits":
                 st.error(f"Erreur lors de l'analyse : {e}")
 
 # -------------------------------
+# --- FORENSIC AUDIT UI ---
+# -------------------------------
+
+if selected_tool == "Forensic Audit":
+    st.header("🕵️ Audit Forensique & Anomalies")
+    st.write("Analyse heuristique sur 15 indicateurs clés (Spoofing, Timestomping, ZipBombs, Crypto, etc.)")
+    
+    st.code(f"Base utilisée : {DB_PATH}", language="bash")
+    
+    if st.button("Lancer l'audit complet"):
+        if not DB_PATH.exists():
+            st.error(f"❌ Base SQLite introuvable : {DB_PATH}")
+        else:
+            with st.spinner("Exécution des algorithmes forensiques en cours..."):
+                results = run_forensic_analysis(str(DB_PATH))
+            
+            if "error" in results:
+                st.error(results["error"])
+            else:
+                st.success("✅ Audit terminé. Résultats détaillés ci-dessous.")
+                
+                # Liste pour l'export consolidé
+                export_list = []
+                
+                # Dictionnaire de mapping pour l'affichage propre
+                descriptions = {
+                    "spoofing_df": "🚨 Extension Spoofing",
+                    "timestomping_df": "⏰ Timestomping (>24h décalage)",
+                    "zipbomb_df": "💣 Zip Bombs / Compression Suspecte",
+                    "ghost_files_df": "👻 Fichiers Fantômes (Hash Collision)",
+                    "secrets_df": "🔑 Secrets Potentiels (Code/Txt)",
+                    "encrypted_df": "🔒 Fichiers Chiffrés / Protégés",
+                    "unsigned_exe_df": "⚠️ Exécutables Non Signés",
+                    "gdpr_heatmap_df": "🛡️ Densité RGPD (Par dossier)",
+                    "silent_hours_df": "🌙 Activité Suspecte (Nuit/WE)",
+                    "authors_df": "✍️ Auteurs Externes / Multiples",
+                    "fakework_df": "⚡ Fake Work / Génération Rapide",
+                    "cameras_df": "📷 Empreinte Matérielle (Appareils)",
+                    "zombies_df": "🧟 Fichiers Zombies (>3 ans)",
+                    "tech_debt_df": "🏚️ Dette Technique (Code)",
+                    "geo_df": "🌍 Dispersion Géographique"
+                }
+
+                # Affichage des résultats non vides
+                count_anomalies = 0
+                
+                for key, title in descriptions.items():
+                    df = results.get(key)
+                    if df is not None and not df.empty:
+                        count_anomalies += len(df)
+                        with st.expander(f"{title} ({len(df)} éléments)", expanded=False):
+                            st.dataframe(df)
+                        
+                        # Préparation Export : On standardise pour concaténer
+                        df_export = df.copy()
+                        df_export.insert(0, 'Anomaly_Type', title)
+                        # On convertit tout en string pour éviter les conflits de types lors du merge
+                        df_export = df_export.astype(str)
+                        export_list.append(df_export)
+                
+                if count_anomalies == 0:
+                    st.info("Aucune anomalie détectée sur l'ensemble des indicateurs.")
+                else:
+                    st.warning(f"Total : {count_anomalies} anomalies ou points d'attention détectés.")
+
+                # Bouton Export CSV Unifié
+                if export_list:
+                    full_report = pd.concat(export_list, ignore_index=True)
+                    
+                    # Réorganisation intelligente des colonnes pour l'export
+                    cols = list(full_report.columns)
+                    # On met Anomaly et path au début si existants
+                    if 'Anomaly_Type' in cols:
+                        cols.insert(0, cols.pop(cols.index('Anomaly_Type')))
+                    if 'path' in cols:
+                        cols.insert(1, cols.pop(cols.index('path')))
+                    
+                    full_report = full_report[cols]
+                    
+                    csv_data = full_report.to_csv(index=False).encode('utf-8')
+                    
+                    st.download_button(
+                        label="📥 Télécharger le Rapport d'Anomalies (CSV)",
+                        data=csv_data,
+                        file_name="rapport_forensic_complet.csv",
+                        mime="text/csv"
+                    )
+
+
+
+# -------------------------------
 # --- POPULATE METADATA UI ---
 # -------------------------------
 
@@ -319,3 +416,71 @@ if selected_tool == "Volume Map":
             file_name="volume_map.csv",
             mime="text/csv",
         )
+
+# -------------------------------
+# --- REGEX ANALYTICS UI ---
+# -------------------------------
+
+if selected_tool == "Regex Analytics":
+    st.header("🔍 Analyse Regex Forensique (16 catégories)")
+
+    st.write(
+        "Ce module scanne tous les fichiers texte (code, logs, configs, etc.) "
+        "à la recherche de données sensibles comme :\n"
+        "- NSS, Carte d’identité, Téléphone\n"
+        "- Mot de passe, Clé API, Carte bancaire\n"
+        "- URL internes, Fichiers temporaires, Commentaires sensibles\n"
+        "\n"
+        "Les résultats sont enregistrés dans la base et affichés ci-dessous."
+    )
+
+    st.code(f"Base utilisée : {DB_PATH}", language="bash")
+
+    if st.button("Lancer l'analyse Regex"):
+        with st.spinner("Analyse en cours... (16 catégories de regex)"):
+            try:
+                # Importer le module de détection
+                from src.forensic_detector import run_forensic_scan
+
+                # Exécuter le scan
+                run_forensic_scan(str(DB_PATH))
+
+                # Récupérer les résultats depuis la base
+                conn = sqlite3.connect(str(DB_PATH))
+                df = pd.read_sql_query("""
+                    SELECT 
+                        f.path AS fichier,
+                        d.category AS catégorie,
+                        d.value AS valeur,
+                        d.detected_at AS date_detection
+                    FROM file_sensitivity_detection d
+                    JOIN file f ON d.file_id = f.id
+                    ORDER BY d.detected_at DESC
+                """, conn)
+                conn.close()
+
+                # Afficher le tableau
+                st.success(f"✅ Analyse terminée. {len(df)} détections trouvées.")
+
+                if not df.empty:
+                    st.dataframe(df)
+
+                    # Export CSV
+                    csv_data = df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="📥 Télécharger les résultats (CSV)",
+                        data=csv_data,
+                        file_name="regex_detection_results.csv",
+                        mime="text/csv"
+                    )
+
+                    # Statistiques par catégorie
+                    st.subheader("📊 Résumé par catégorie")
+                    stats = df['catégorie'].value_counts()
+                    st.bar_chart(stats)
+
+                else:
+                    st.info("Aucune donnée sensible détectée.")
+
+            except Exception as e:
+                st.error(f"❌ Erreur lors de l'analyse : {e}")
